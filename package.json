@@ -6,7 +6,8 @@
     "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend",
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\""
+    "auto-sync": "node scripts/auto-sync.js",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run auto-sync\""
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
