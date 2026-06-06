@@ -93,8 +93,10 @@ OUTPUT SCREEN:
 
 UNO MINDA(INTERNSHIP PURPOSE)
 Main Facility (Seating / Casting / Switch Division):Survey No. 209/2A2, 2B1, 2B2, 2C1Thalli Road, Mathagondapalli VillageHosur, Krishnagiri, Tamil Nadu, 635114
+
+
+
+
 ⭐ If you found this project useful, please give it a star on GitHub.
 
-UNO MINDA – Machine Instruction & Compliance Management System
 
-A modern ERP solution developed to improve industrial instruction handling, employee compliance monitoring, and operational efficiency.
