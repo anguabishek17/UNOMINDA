@@ -32,7 +32,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  // Get raw API URL from environment variables, fallback to localhost:5000/api
+  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  
+  // Normalize by stripping any trailing slash
+  const normalizedRaw = rawApiUrl.replace(/\/$/, '');
+  
+  // Extract server base URL (e.g., https://unominda.onrender.com)
+  const serverBaseUrl = normalizedRaw.endsWith('/api') 
+    ? normalizedRaw.slice(0, -4) 
+    : normalizedRaw;
+    
+  // Export/use apiUrl as always ending in /api
+  const apiUrl = `${serverBaseUrl}/api`;
 
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
@@ -51,7 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       // Try hitting real backend
-      const response = await fetch(`${apiUrl}/auth/login`, {
+      const response = await fetch(`${serverBaseUrl}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
