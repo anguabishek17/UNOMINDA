@@ -1,0 +1,190 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+enum InstructionType {
+  SAFETY
+  OPERATING
+  MAINTENANCE
+  EMERGENCY
+  TRAINING
+  QUALITY
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum InstructionStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum MachineStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+model User {
+  id               String            @id @default(uuid())
+  email            String            @unique
+  password         String
+  name             String
+  role             Role              @default(EMPLOYEE)
+  plantId          String?
+  plant            Plant?            @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  departmentId     String?
+  department       Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  acknowledgements Acknowledgement[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model Plant {
+  id          String       @id @default(uuid())
+  name        String
+  code        String       @unique
+  location    String
+  departments Department[]
+  users       User[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Department {
+  id           String           @id @default(uuid())
+  name         String
+  plantId      String
+  plant        Plant            @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  lines        ProductionLine[]
+  users        User[]
+  instructions Instruction[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model ProductionLine {
+  id           String        @id @default(uuid())
+  name         String
+  departmentId String
+  department   Department    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  description  String?
+  machines     Machine[]
+  instructions Instruction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Machine {
+  id               String            @id @default(uuid())
+  name             String
+  code             String            @unique
+  productionLineId String
+  productionLine   ProductionLine    @relation(fields: [productionLineId], references: [id], onDelete: Cascade)
+  location         String
+  status           MachineStatus     @default(ACTIVE)
+  qrCode           String            @db.Text
+  exitPassword     String?
+  acknowledgements Acknowledgement[]
+  instructions     Instruction[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model Instruction {
+  id               String            @id @default(uuid())
+  title            String
+  description      String            @db.Text
+  instructionType  InstructionType
+  priority         Priority          @default(MEDIUM)
+  version          String            @default("1.0")
+  effectiveDate    DateTime
+  expiryDate       DateTime?
+  status           InstructionStatus @default(DRAFT)
+  
+  // Scoped targets
+  machineId        String?
+  machine          Machine?          @relation(fields: [machineId], references: [id], onDelete: SetNull)
+  productionLineId String?
+  productionLine   ProductionLine?   @relation(fields: [productionLineId], references: [id], onDelete: SetNull)
+  departmentId     String?
+  department       Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  // Media delivery fields
+  fileUrl          String?
+  fileType         String?
+  uploadedBy       String?
+  exitPassword     String?
+  
+  attachments      Attachment[]
+  acknowledgements Acknowledgement[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model Attachment {
+  id            String      @id @default(uuid())
+  filename      String
+  filepath      String      
+  mimetype      String
+  size          Int
+  instructionId String
+  instruction   Instruction @relation(fields: [instructionId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+}
+
+model Acknowledgement {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  machineId     String
+  machine       Machine   @relation(fields: [machineId], references: [id], onDelete: Cascade)
+  instructionId String
+  instruction   Instruction @relation(fields: [instructionId], references: [id], onDelete: Cascade)
+  viewedAt      DateTime  @default(now())
+  acknowledgedAt DateTime?
+  duration      Int       @default(0) // time spent in seconds
+  status        String    @default("PENDING") // PENDING, VIEWED, ACKNOWLEDGED
+  createdAt     DateTime  @default(now())
+  
+  @@unique([userId, instructionId, machineId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  type      String   
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String   
+  details   String   @db.Text 
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+}
