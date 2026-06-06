@@ -2,20 +2,21 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const WATCH_DIRS = [
-  path.join(__dirname, '../frontend/src'),
-  path.join(__dirname, '../backend/src')
+const WATCH_PATHS = [
+  { path: path.join(__dirname, '../frontend/src'), recursive: true },
+  { path: path.join(__dirname, '../backend/src'), recursive: true },
+  { path: path.join(__dirname, '..'), recursive: false }
 ];
 
 const DEBOUNCE_MS = 15000; // Wait 15 seconds of silence before pushing
 let timeoutId = null;
 
-console.log('[Auto-Sync] Started watching directories:');
-WATCH_DIRS.forEach(dir => {
-  if (fs.existsSync(dir)) {
-    console.log(` - ${dir}`);
+console.log('[Auto-Sync] Started watching paths:');
+WATCH_PATHS.forEach(wp => {
+  if (fs.existsSync(wp.path)) {
+    console.log(` - ${wp.path} (recursive: ${wp.recursive})`);
   } else {
-    console.log(` - [WARNING] Directory does not exist: ${dir}`);
+    console.log(` - [WARNING] Path does not exist: ${wp.path}`);
   }
 });
 
@@ -59,8 +60,16 @@ async function syncChanges() {
 
 function handleChange(eventType, filename) {
   if (filename) {
-    // Ignore temp files, lockfiles, or files outside source code if any
-    if (filename.endsWith('~') || filename.startsWith('.') || filename.includes('node_modules')) {
+    // Ignore directories, system files, or node_modules
+    if (
+      filename.endsWith('~') || 
+      filename.startsWith('.') || 
+      filename.includes('node_modules') ||
+      filename.includes('.git') ||
+      filename.includes('.next') ||
+      filename.includes('dist') ||
+      filename.includes('uploads')
+    ) {
       return;
     }
   }
@@ -79,8 +88,8 @@ function handleChange(eventType, filename) {
 }
 
 // Start watching
-WATCH_DIRS.forEach(dir => {
-  if (fs.existsSync(dir)) {
-    fs.watch(dir, { recursive: true }, handleChange);
+WATCH_PATHS.forEach(wp => {
+  if (fs.existsSync(wp.path)) {
+    fs.watch(wp.path, { recursive: wp.recursive }, handleChange);
   }
 });
