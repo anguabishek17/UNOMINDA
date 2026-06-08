@@ -56,7 +56,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const fetchNotifications = async () => {
     try {
       // Return realistic mock notifications if DB is not active or during offline run
-      const res = await authFetch(`${apiUrl}/instructions`);
+      const res = await authFetch(`${apiUrl}/instructions?status=ACTIVE`);
       if (res.ok) {
         const sops = await res.json();
         // create mock notifications based on active sops

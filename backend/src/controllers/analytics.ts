@@ -23,23 +23,43 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
       select: { id: true, departmentId: true }
     });
 
+    // Query all production lines and machines once to avoid N+1 queries inside loop
+    const allLines = await prisma.productionLine.findMany({
+      select: { id: true, departmentId: true }
+    });
+    const allMachines = await prisma.machine.findMany({
+      select: { id: true, productionLineId: true }
+    });
+
+    // Build lookup maps
+    const linesByDept = new Map<string, string[]>();
+    for (const line of allLines) {
+      if (!line.departmentId) continue;
+      if (!linesByDept.has(line.departmentId)) {
+        linesByDept.set(line.departmentId, []);
+      }
+      linesByDept.get(line.departmentId)!.push(line.id);
+    }
+
+    const machinesByLine = new Map<string, string[]>();
+    for (const machine of allMachines) {
+      if (!machine.productionLineId) continue;
+      if (!machinesByLine.has(machine.productionLineId)) {
+        machinesByLine.set(machine.productionLineId, []);
+      }
+      machinesByLine.get(machine.productionLineId)!.push(machine.id);
+    }
+
     let totalPossibleAcks = 0;
     for (const emp of employees) {
       if (!emp.departmentId) continue;
 
-      // Get lines in department
-      const lines = await prisma.productionLine.findMany({
-        where: { departmentId: emp.departmentId },
-        select: { id: true }
-      });
-      const lineIds = lines.map(l => l.id);
-
-      // Get machines in lines
-      const machines = await prisma.machine.findMany({
-        where: { productionLineId: { in: lineIds } },
-        select: { id: true }
-      });
-      const machineIds = machines.map(m => m.id);
+      const lineIds = linesByDept.get(emp.departmentId) || [];
+      const machineIds: string[] = [];
+      for (const lineId of lineIds) {
+        const mIds = machinesByLine.get(lineId) || [];
+        machineIds.push(...mIds);
+      }
 
       const applicableCount = activeInstructions.filter(inst => 
         inst.departmentId === emp.departmentId ||
@@ -157,6 +177,20 @@ export const getComplianceCharts = async (req: AuthRequest, res: Response) => {
       take: 8
     });
 
+    // Query employee counts per department once to avoid nested DB count queries
+    const employeeCounts = await prisma.user.groupBy({
+      by: ['departmentId'],
+      where: { role: 'EMPLOYEE' },
+      _count: { id: true }
+    });
+
+    const employeeCountMap = new Map<string, number>();
+    for (const group of employeeCounts) {
+      if (group.departmentId) {
+        employeeCountMap.set(group.departmentId, group._count.id);
+      }
+    }
+
     const machineCompliance = await Promise.all(
       machines.map(async (m) => {
         const instructions = activeInstructions.filter(inst => 
@@ -165,9 +199,7 @@ export const getComplianceCharts = async (req: AuthRequest, res: Response) => {
           inst.departmentId === m.productionLine.departmentId
         );
 
-        const employeeCount = await prisma.user.count({
-          where: { role: 'EMPLOYEE', departmentId: m.productionLine.departmentId }
-        });
+        const employeeCount = m.productionLine.departmentId ? (employeeCountMap.get(m.productionLine.departmentId) || 0) : 0;
 
         const target = instructions.length * employeeCount;
 

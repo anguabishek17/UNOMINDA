@@ -42,8 +42,10 @@ export const login = async (req: Request, res: Response) => {
       { expiresIn: '7d' }
     );
 
-    // Write audit log
-    await logAudit(user.id, 'USER_LOGIN', { email: user.email, name: user.name }, req as any);
+    // Write audit log asynchronously
+    logAudit(user.id, 'USER_LOGIN', { email: user.email, name: user.name }, req as any).catch(err => {
+      console.error('Failed to log audit in login:', err);
+    });
 
     return res.json({
       token,

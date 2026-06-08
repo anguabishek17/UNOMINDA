@@ -123,14 +123,7 @@ export const getInstructions = async (req: AuthRequest, res: Response) => {
         attachments: true,
         machine: true,
         productionLine: true,
-        department: true,
-        acknowledgements: {
-          include: {
-            user: {
-              select: { name: true, email: true }
-            }
-          }
-        }
+        department: true
       },
       orderBy: { createdAt: 'desc' }
     });
